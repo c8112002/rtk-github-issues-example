@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react'
 
-import { getIssues, getRepoDetails, IssuesResult } from 'api/githubAPI'
+import { getIssues, IssuesResult } from 'api/githubAPI'
 
 import { IssuesPageHeader } from './IssuesPageHeader'
 import { IssuesList } from './IssuesList'
 import { IssuePagination, OnPageChangeCallback } from './IssuePagination'
+import { useDispatch, useSelector } from 'react-redux'
+import { RootState } from 'app/rootReducer'
+import { fetchIssueCount } from 'features/repoSearch/repoDetailsSlice'
 
 interface ILProps {
   org: string
@@ -21,14 +24,15 @@ export const IssuesListPage = ({
   setJumpToPage,
   showIssueComments
 }: ILProps) => {
+  const dispatch = useDispatch()
   const [issuesResult, setIssues] = useState<IssuesResult>({
     pageLinks: null,
     pageCount: 1,
     issues: []
   })
-  const [numIssues, setNumIssues] = useState<number>(-1)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [issuesError, setIssuesError] = useState<Error | null>(null)
+  const openIssuesCount = useSelector((state: RootState) => state.repoDetails.openIssueCount)
 
   const { issues, pageCount } = issuesResult
 
@@ -39,13 +43,12 @@ export const IssuesListPage = ({
         setIssues(issuesResult)
       }
 
-      async function fetchIssueCount() {
-        const repoDetails = await getRepoDetails(org, repo)
-        setNumIssues(repoDetails.open_issues_count)
-      }
-
       try {
-        await Promise.all([fetchIssues(), fetchIssueCount()])
+        await Promise.all([
+          fetchIssues(), 
+          dispatch(fetchIssueCount(org, repo))
+        ])
+
         setIssuesError(null)
       } catch (err) {
         console.error(err)
@@ -58,7 +61,7 @@ export const IssuesListPage = ({
     setIsLoading(true)
 
     fetchEverything()
-  }, [org, repo, page])
+  }, [org, repo, page, dispatch])
 
   if (issuesError) {
     return (
@@ -84,7 +87,7 @@ export const IssuesListPage = ({
 
   return (
     <div id="issue-list-page">
-      <IssuesPageHeader openIssuesCount={numIssues} org={org} repo={repo} />
+      <IssuesPageHeader openIssuesCount={openIssuesCount} org={org} repo={repo} />
       {renderedList}
       <IssuePagination
         currentPage={currentPage}
