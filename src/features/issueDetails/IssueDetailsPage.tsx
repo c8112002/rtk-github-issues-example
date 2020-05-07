@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import classnames from 'classnames'
 
 import { insertMentionLinks } from 'utils/stringUtils'
-import { getIssue, getComments, Issue, Comment } from 'api/githubAPI'
+import { getComments, Comment } from 'api/githubAPI'
 import { IssueLabels } from 'components/IssueLabels'
 
 import { IssueMeta } from './IssueMeta'
@@ -11,6 +11,9 @@ import { IssueComments } from './IssueComments'
 
 import styles from './IssueDetailsPage.module.css'
 import './IssueDetailsPage.css'
+import { useDispatch, useSelector } from 'react-redux'
+import { RootState } from 'app/rootReducer'
+import { fetchIssue } from 'features/issuesList/issuesSlice'
 
 interface IDProps {
   org: string
@@ -25,23 +28,17 @@ export const IssueDetailsPage = ({
   issueId,
   showIssuesList
 }: IDProps) => {
-  const [issue, setIssue] = useState<Issue | null>(null)
   const [comments, setComments] = useState<Comment[]>([])
-  const [commentsError, setCommentsError] = useState<Error | null>(null)
+  const [commentsError] = useState<Error | null>(null)
+  const dispatch = useDispatch()
+  const issue = useSelector((state: RootState) => state.issues.issuesByNumber[issueId])
 
   useEffect(() => {
-    async function fetchIssue() {
-      try {
-        setCommentsError(null)
-        const issue = await getIssue(org, repo, issueId)
-        setIssue(issue)
-      } catch (err) {
-        setCommentsError(err)
-      }
+    if (!issue) {
+      dispatch(fetchIssue(org, repo, issueId))
     }
-
-    fetchIssue()
-  }, [org, repo, issueId])
+    window.scrollTo({top: 0})
+  }, [org, repo, issueId, issue, dispatch])
 
   useEffect(() => {
     async function fetchComments() {
